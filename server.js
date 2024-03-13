@@ -17,9 +17,9 @@ const assetDetailsManagementRouter = require('./routes/asset_details_management.
 
 const con = mysql.createConnection({
     host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'kanha'
+    user: 'admin_kanha',
+    password: '7MFPDcj3uE',
+    database: 'admin_kaninv'
 })
 
 con.connect(function (err) {
