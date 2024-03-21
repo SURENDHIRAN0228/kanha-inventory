@@ -1,3 +1,4 @@
+// Import necessary modules
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
@@ -6,8 +7,6 @@ const fs = require('fs')
 
 const assetDetailsManagementController = require("../controllers/asset_details_management.controller");
 const { uploads } = require("../middleware/uploads");
-//const uploads  = require("../middleware/uploads")
-
 
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => {
@@ -23,11 +22,10 @@ const storage = multer.diskStorage({
         }
 	},
 	filename: (req, file, cb) => {
-		// save file with current timestamp + user email + file extension
+		// save file with current timestamp + field name of the file + file extension
 		cb(null,  Date.now() + file.fieldname + path.extname(file.originalname));
 	}
 })
-    //departmentGatepassCopy,warrantyCopy,insuranceCopy,purchaseAndDisposalApprovalCopy,purchaseOrderCopy,invoiceCopy
 
 const fileFilter = (req, file, cb) => {
     if(file.fieldname === "assetImage") {
@@ -39,33 +37,23 @@ const fileFilter = (req, file, cb) => {
         (file.mimetype === 'text/csv')? cb(null,true): cb(null,false);
     }
 }
+
 // initialize the multer configuration
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter    
 }).fields([{ name: 'file', maxCount: 1 },{ name: 'assetImage', maxCount: 1 }, { name: 'storeInwardCopy', maxCount: 1 }, { name: 'departmentGatepassCopy', maxCount: 1 }, { name: 'warrantyCopy', maxCount: 1 }, { name: 'insuranceCopy', maxCount: 1 }, { name: 'purchaseAndDisposalApprovalCopy', maxCount: 1 }, { name: 'purchaseOrderCopy', maxCount: 1 }, { name: 'invoiceCopy', maxCount: 1}]);
 
-/*
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, 'storage/pdf_copies/'); // Specify the directory to save the uploaded files
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + path.extname(file.originalname)); // Use the original file name
-    }
-  });
-  
-  const upload = multer({ storage: storage });
-*/
-
-
-//router.post("/import", upload, assetDetailsManagementController.import);
+//Route to Importing csv  file
 router.post("/import", uploads("file"), assetDetailsManagementController.import);
 
-
+// Route to fetch data from MySQL database
 router.get("/", function(req, res) {
+
+    //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_details_managements` , function (error, result) {
         if (error) {
+            // Handle error
             console.log("Error Connecting to DB");
         } else {
             res.send({ status: true, data: result });
@@ -73,7 +61,10 @@ router.get("/", function(req, res) {
     })
 })
 
+// Route to fetch single data from MySql database
 router.get("/:id", function(req, res) {
+
+    //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_details_managements WHERE id='${req.params.id}'`, function (error, result) {
         if (error) {
             console.log("Error Connecting to DB");
@@ -83,11 +74,7 @@ router.get("/:id", function(req, res) {
     });
 });
 
-/*router.post('/create' ,  upload.fields([
-    { name: 'assetImage', maxCount: 1 }, { name: 'storeInwardCopy', maxCount: 1 },
-    { name: 'departmentGatepassCopy', maxCount: 1 }, { name: 'warrantyCopy', maxCount: 1 },
-    { name: 'insuranceCopy', maxCount: 1 }, { name: 'purchaseAndDisposalApprovalCopy', maxCount: 1 },
-    { name: 'purchaseOrderCopy', maxCount: 1 }, { name: 'invoiceCopy', maxCount: 1 },  ]) , function (req, res)  {*/
+// Define a route to handle data insertion
 router.post('/create', upload , function (req, res) {
     const asset_name = req.body.assetName
     const asset_classification = req.body.assetClassification
@@ -101,11 +88,7 @@ router.post('/create', upload , function (req, res) {
     const asset_capacity = req.body.capacity
     const asset_quantity = req.body.quantity
     const asset_description = req.body.description
-    //const assetImages = !req.file ? 'placeholder.jpg' : req.file.filename
     const assetImage =req.files.assetImage[0].filename
-    //departmentGatepassCopy,warrantyCopy,insuranceCopy,purchaseAndDisposalApprovalCopy,purchaseOrderCopy,invoiceCopy
-    //const asset_store_inward_copy = req.files.storeInwardCopy[0].filename
-
     const asset_store_inward_number = req.body.storeInwardNo
     const asset_store_inward_copy = req.files.storeInwardCopy[0].filename
     const department_gatepass_number = req.body.deptGatepassNo
@@ -126,13 +109,11 @@ router.post('/create', upload , function (req, res) {
     const asset_company_purchased = req.body.organization
     const invoice_number = req.body.invoiceNumber
     const invoice_copy = req.files.invoiceCopy[0].filename
-    const vendor_name = "vendor name"
-    //const vendor_name = req.body.vendor_name
+    const vendor_name = req.body.vendor_name
     const asset_price = req.body.price
-    console.log(req.body);
-    //req.con.query(`INSERT INTO asset_details_managements SET asset_name = '${asset_name}', asset_classification = '${asset_classification}', asset_category = '${asset_category}', asset_department = '${asset_department}', asset_location = '${asset_location}', asset_model = '${asset_model}', manufactured_asset_serial_no = '${manufactured_asset_serial_no}', date_of_inclusion = '${date_of_inclusion}', manufactured_by = '${manufactured_by}', asset_capacity = '${asset_capacity}', asset_quantity = '${asset_quantity}', asset_description = '${asset_description}', asset_images = '${asset_images}' , asset_store_inward_number = '${asset_store_inward_number}', department_gatepass_number = '${department_gatepass_number}',  warranty_number = '${warranty_number}', warranty_expiry_date = '${warranty_expiry_date}',  insurance_number = '${insurance_number}', insurance_expiry_date = '${insurance_expiry_date}',  spare_mrn = '${spare_mrn}', scrape_mrn = '${scrape_mrn}', asset_working_status = '${asset_working_status}',  purchase_order_number = '${purchase_order_number}',  date_of_purchase = '${date_of_purchase}', asset_company_purchased = '${asset_company_purchased}', invoice_number = '${invoice_number}',  vendor_name = '${vendor_name}', asset_price = '${asset_price}'`, (error, results) => {
+    
+    // Insert data into the database
     req.con.query(`INSERT INTO asset_details_managements SET asset_name = '${asset_name}', asset_classification = '${asset_classification}', asset_category = '${asset_category}', asset_department = '${asset_department}', asset_location = '${asset_location}', asset_model = '${asset_model}', manufactured_asset_serial_no = '${manufactured_asset_serial_no}', date_of_inclusion = '${date_of_inclusion}', manufactured_by = '${manufactured_by}', asset_capacity = '${asset_capacity}', asset_quantity = '${asset_quantity}', asset_description = '${asset_description}', asset_images = '${assetImage}', asset_store_inward_number = '${asset_store_inward_number}', asset_store_inward_copy = '${asset_store_inward_copy}', department_gatepass_number = '${department_gatepass_number}', department_gatepass_copy = '${department_gatepass_copy}', warranty_number = '${warranty_number}', warranty_expiry_date = '${warranty_expiry_date}', warranty_copy = '${warranty_copy}', insurance_number = '${insurance_number}', insurance_expiry_date = '${insurance_expiry_date}', insurance_copy = '${insurance_copy}', spare_mrn = '${spare_mrn}', scrape_mrn = '${scrape_mrn}', asset_working_status = '${asset_working_status}', purchase_and_disposal_copy = '${purchase_and_disposal_copy}', purchase_order_number = '${purchase_order_number}', purchase_order_copy = '${purchase_order_copy}', date_of_purchase = '${date_of_purchase}', asset_company_purchased = '${asset_company_purchased}', invoice_number = '${invoice_number}', invoice_copy = '${invoice_copy}', vendor_name = '${vendor_name}', asset_price = '${asset_price}'`, (error, results) => {
-            /* , asset_images = '${asset_images}' */
         if(results) {
             req.con.query(`SELECT MAX(id) AS max_id FROM asset_details_managements ` , function (error, result, fields) { 
                 const MaxId = result[0].max_id
@@ -147,9 +128,8 @@ router.post('/create', upload , function (req, res) {
     })
 });
 
+// Route to handle updating data
 router.post('/update/:id', function (req, res) {
-
-    console.log(req.body)
     const asset_name = req.body.assetName
     const asset_category = req.body.assetCategory
     const asset_department = req.body.department
@@ -163,6 +143,8 @@ router.post('/update/:id', function (req, res) {
         //asset_images = req.file.filename
 	//}
     
+    
+    // Request to update data
     req.con.query(`UPDATE asset_details_managements SET asset_name = '${asset_name}', asset_category = '${asset_category}', asset_department = '${asset_department}', asset_location = '${asset_location}' WHERE id= '${req.params.id}'`, (error, results) => {
         if(results) {
             res.send({"status":true, "message":"Updated successfully"});
@@ -173,7 +155,7 @@ router.post('/update/:id', function (req, res) {
 });
 
 
-
+// Route to delete data from MySQL database
 router.delete('/delete/:id', function (req, res) {
     req.con.query(`DELETE FROM asset_details_managements WHERE id='${req.params.id}'`, (error, results) => {
         if (results) {
@@ -184,6 +166,7 @@ router.delete('/delete/:id', function (req, res) {
     })
 })
 
+// Route to delete multiple data from MySQL database
 router.delete('/delete-rows', (req, res) => {
   // Assuming you send an array of IDs to delete in the request body
   const idsToDelete = req.body.ids;
