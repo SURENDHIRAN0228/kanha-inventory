@@ -4,18 +4,15 @@ const outputPath = "storage/outputs";
 
 exports.import = async (req, res) => {
 
-    //console.log('Request body:', req.files.file[0].filename);
-    //console.log('Request file:', req.body);
-
+    //Read the imported file
     const wb = XLSX.readFile(req.file.path);
     const sheets = wb.SheetNames;
 
+    //To check given file is empty or not
     if (sheets.length > 0) {
         const data = XLSX.utils.sheet_to_json(wb.Sheets[sheets[0]]);
+
         const assetDetailsManagements = data.map(row => ({
-        //const assetDetailsManagement = data.map(row => ({
-
-
             asset_name: row["asset_name"],
             asset_code: row["asset_code"],
             asset_classification: row["asset_classification"],
@@ -44,12 +41,9 @@ exports.import = async (req, res) => {
             invoice_number: row["invoice_number"],
             vendor_name: row["vendor_name"],
             asset_price: row["asset_price"]
-
-           
-
         }));
 
-
+         // Insert the data into MySQL
         await AssetDetailsManagement.bulkCreate(assetDetailsManagements);
     }
     res.send({ data: "added successfully" });
