@@ -4,8 +4,9 @@ const mysql = require('mysql')
 const path = require('path')
 const session = require('express-session')
 const cors = require('cors');
+const dotenv = require('dotenv');
 
-//require('dotenv').config()
+dotenv.config();
 
 const departmentRouter = require('./routes/asset_department.routes')
 const locationRouter = require('./routes/asset_location.route')
@@ -14,14 +15,17 @@ const classificationRouter = require('./routes/asset_classification.route')
 const vendorDetailsRouter = require('./routes/asset_vendor_details.route')
 const assetDetailsRouter = require('./routes/asset_details.route')
 const assetDetailsManagementRouter = require('./routes/asset_details_management.route')
+const userLoginRegister = require('./routes/userLoginRegister.route')
 
+// MySQL database configuration
 const con = mysql.createConnection({
-    host: 'localhost',
-    user: 'admin_kanha',
-    password: '7MFPDcj3uE',
-    database: 'admin_kaninv'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME
 })
 
+// Open the connection
 con.connect(function (err) {
     if (err) {
         console.log("database connection error")
@@ -29,8 +33,6 @@ con.connect(function (err) {
         console.log('database connection success')
     }
 })
-
-
 
 // connecting route to database
 server.use(function (req, res, next) {
@@ -55,13 +57,16 @@ server.use(express.urlencoded({ extended: true }))
 // routing
 server.use('/department', departmentRouter)
 server.use('/location', locationRouter)
-server.use('/location_group', locationGroupRouter)
+server.use('/locationGroup', locationGroupRouter)
 server.use('/classification', classificationRouter)
 server.use('/vendor', vendorDetailsRouter)
 server.use('/asset', assetDetailsRouter)
 server.use('/asset_management', assetDetailsManagementRouter)
+server.use('/user', userLoginRegister)
+
 //app.use(express.static('public'))
 
-server.listen(2000, function () {
-    console.log('server started - http://localhost:2000/')
+// Start the server
+server.listen(process.env.PORT, function () {
+    console.log('server started - http://localhost:'+process.env.PORT+'/')
 })
