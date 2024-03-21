@@ -1,29 +1,72 @@
-{
-  "name": "node-js-crud-mysql",
-  "version": "1.0.0",
-  "description": "simple implementation of crud using mysql database in node js",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "author": "m. ilham surya pratama",
-  "license": "ISC",
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
-    "dotenv": "^6.2.0",
-    "express": "^4.18.2",
-    "express-session": "^1.17.3",
-    "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.4",
-    "mysql": "^2.18.1",
-    "mysql2": "^3.6.5",
-    "nodemailer": "^6.9.7",
-    "nodemon": "^3.0.1",
-    "pug": "^2.0.4",
-    "sequelize": "^6.35.2",
-    "uniqid": "^5.4.0",
-    "xlsx": "^0.18.5"
-  }
-}
+const express = require('express')
+const server = express()
+const mysql = require('mysql')
+const path = require('path')
+const session = require('express-session')
+const cors = require('cors');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+const departmentRouter = require('./routes/asset_department.routes')
+const locationRouter = require('./routes/asset_location.route')
+const locationGroupRouter = require('./routes/asset_location_group.route')
+const classificationRouter = require('./routes/asset_classification.route')
+const vendorDetailsRouter = require('./routes/asset_vendor_details.route')
+const assetDetailsRouter = require('./routes/asset_details.route')
+const assetDetailsManagementRouter = require('./routes/asset_details_management.route')
+const userLoginRegister = require('./routes/userLoginRegister.route')
+
+// MySQL database configuration
+const con = mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME
+})
+
+// Open the connection
+con.connect(function (err) {
+    if (err) {
+        console.log("database connection error")
+    } else {
+        console.log('database connection success')
+    }
+})
+
+// connecting route to database
+server.use(function (req, res, next) {
+    req.con = con
+    next()
+})
+
+//user session
+server.use(session({
+    secret: 'secret',
+    resave: true,
+    saveUninitialized: true
+}));
+
+//connecting frontend
+server.use(cors());
+
+// parsing post data
+server.use(express.json())
+server.use(express.urlencoded({ extended: true }))
+
+// routing
+server.use('/department', departmentRouter)
+server.use('/location', locationRouter)
+server.use('/locationGroup', locationGroupRouter)
+server.use('/classification', classificationRouter)
+server.use('/vendor', vendorDetailsRouter)
+server.use('/asset', assetDetailsRouter)
+server.use('/asset_management', assetDetailsManagementRouter)
+server.use('/user', userLoginRegister)
+
+//app.use(express.static('public'))
+
+// Start the server
+server.listen(process.env.PORT, function () {
+    console.log('server started - http://localhost:'+process.env.PORT+'/')
+})
