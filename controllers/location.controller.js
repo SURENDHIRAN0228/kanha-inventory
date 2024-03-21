@@ -2,21 +2,27 @@ const XLSX = require("xlsx");
 const Location = require("../models/location.model");
 const outputPath = "storage/outputs";
 
-
 exports.import = async (req, res) => {
+
+    //Read the imported file
     const wb = XLSX.readFile(req.file.path);
     const sheets = wb.SheetNames;
 
+    //To check given file is empty or not
     if (sheets.length > 0) {
         const data = XLSX.utils.sheet_to_json(wb.Sheets[sheets[0]]);
+
         const location = data.map(row => ({
-            location_name : row["location_name"],
-            location_code : row["location_code"],
-            department_name : row["department_name"],
-            location_type : row["location_type"],
-            location_group : row["location_group"],
+            locationName : row["locationName"],
+            locationCode : row["locationCode"],
+            departmentName : row["departmentName"],
+            locationType : row["locationType"],
+            locationGroup : row["locationGroup"],
         }));
+
+         // Insert the data into MySQL
         await Location.bulkCreate(location);
     }
-    res.send({ data: "added successfully" });
+
+    res.send({ data: "Locations Added Successfully" });
 };
