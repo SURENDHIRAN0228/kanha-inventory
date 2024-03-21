@@ -1,3 +1,4 @@
+// Import necessary modules
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
@@ -7,11 +8,16 @@ const fs = require('fs')
 const departmentController = require("../controllers/department.controller");
 const { upload } = require("../middleware/uploader");
 
-router.post("/import", upload("file"), departmentController.import);
+//Route to Importing csv  file
+router.post("/importDeparment", upload("file"), departmentController.import);
 
-router.get("/", function(req, res) {
+// Route to fetch data from MySQL database
+router.get("/getDepartment", function(req, res) {
+
+    //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_departments` , function (error, result) {
         if (error) {
+            // Handle error
             console.log("Error Connecting to DB");
         } else {
             res.send({ status: true, data: result });
@@ -19,7 +25,10 @@ router.get("/", function(req, res) {
     })
 })
 
-router.get("/:id", function(req, res) {
+// Route to fetch single data from MySql database
+router.get("/getDepartment/:id", function(req, res) {
+
+    //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_departments WHERE id='${req.params.id}'`, function (error, result) {
         if (error) {
             console.log("Error Connecting to DB");
@@ -29,29 +38,37 @@ router.get("/:id", function(req, res) {
     });
 });
 
-router.post('/create', function (req, res) {
+// Define a route to handle data insertion
+router.post('/createDepartment', function (req, res) {
+
+    // Extract data from the request body
     const data = req.body
-    req.con.query(`INSERT INTO asset_departments SET department_name = '${data.department_name}', department_email = '${data.department_email}', department_hod_name = '${data.department_hod_name}', department_hod_email = '${data.department_hod_email}', department_hod_phone = '${data.department_hod_phone}'`, (error, results) => {  
+    
+    // Insert data into the database
+    req.con.query(`INSERT INTO asset_departments SET departmentName = '${data.departmentName}', departmentEmail = '${data.departmentEmail}', departmentHODName = '${data.departmentHODName}', departmentHODEmail = '${data.departmentHODEmail}', departmentHODPhone = '${data.departmentHODPhone}'`, (error, results) => {  
         if(results) {
-            req.con.query(`SELECT MAX(id) AS max_id FROM asset_departments ` , function (error, result, fields) { 
-                const MaxId = result[0].max_id
-                var department_code = "KANDPET00"+MaxId
-                console.log(department_code)
-                req.con.query(`UPDATE asset_departments SET department_code = '${department_code}' WHERE id = '${MaxId}'`, (error, results) => {
+            req.con.query(`SELECT MAX(id) AS maxId FROM asset_departments ` , function (error, result, fields) { 
+                const maxId = result[0].maxId
+                var departmentCode = "KANDPET00"+maxId
+                req.con.query(`UPDATE asset_departments SET departmentCode = '${departmentCode}' WHERE id = '${maxId}'`, (error, results) => {
                     res.send({"status":true, "message":"User Created Successfully"});
                 })
             })
 
         } else {
-            res.send({"status":false, "message":"Error creating user"});
+            res.send({"status":false, "message":"Error Creating User"});
         } 
     })
 });
 
-router.post('/update/:id', function (req, res) {
+// Route to handle updating data
+router.post('/updateDepartment/:id', function (req, res) {
+
+     // Assuming you pass the updated data in the request body
     const data = req.body
-    console.log(req.params.id)
-    req.con.query(`UPDATE asset_departments SET department_name = '${data.department_name}', department_email = '${data.department_email}', department_hod_name = '${data.department_hod_name}', department_hod_email = '${data.department_hod_email}', department_hod_phone = '${data.department_hod_phone}' WHERE id= '${req.params.id}'`, (error, results) => {
+    
+    // Request to update data
+    req.con.query(`UPDATE asset_departments SET departmentName = '${data.departmentName}', departmentEmail = '${data.departmentEmail}', departmentHODName = '${data.departmentHODName}', departmentHODEmail = '${data.departmentHODEmail}', departmentHODPhone = '${data.departmentHODPhone}' WHERE id= '${req.params.id}'`, (error, results) => {
         if(results) {
             res.send({"status":true, "message":"Updated successfully"});
         } else {
@@ -60,7 +77,8 @@ router.post('/update/:id', function (req, res) {
     })
 });
 
-router.delete('/delete/:id', function (req, res) {
+// Route to delete data from MySQL database
+router.delete('/deleteDepartment/:id', function (req, res) {
     req.con.query(`DELETE FROM asset_departments WHERE id='${req.params.id}'`, (error, results) => {
         if (results) {
             res.send({ status: true, message: "Deleted Successfully" });
@@ -70,36 +88,38 @@ router.delete('/delete/:id', function (req, res) {
     })
 })
 
-/*router.post('/login', (req, res) => {
-    const data = req.body;
-    //console.log(data);
-
-    if (data) {
-        req.con.query(`SELECT * FROM students WHERE email = '${data.email}' AND password = '${data.password}'`, (error, results) => {
-           req.con.query(`SELECT id FROM students WHERE email = '${data.email}' `, (error, row) => {
-        
-            if (results.length > 0) {
-                //console.log(row);
-                req.session.loggedin = true;
-                req.session.email = data.email;
-                //res.redirect('/data');
-                res.send({ "status": true, "message": row});
-            } else {
-                res.send({ "status": false, "message": 'Incorrect Username and/or Password!' });
-            }
-        })
-    })
-    } else {
-        res.send('Please enter Username and Password!');
-        res.end();
+// Route to delete multiple data from MySQL database
+router.delete('/deleteDepartmentRows', (req, res) => {
+    // Assuming you send an array of IDs to delete in the request body
+    const idsToDelete = req.body.ids;
+     
+    if (!idsToDelete || !Array.isArray(idsToDelete) || idsToDelete.length === 0) {
+      return res.status(400).json({ error: 'Invalid request. Please provide an array of IDs to delete.' });
     }
-})
+  
+    // Convert array elements to integers (assuming IDs are integers)
+    const parsedIds = idsToDelete.map(id => parseInt(id, 10));
+  
+    // Construct the SQL query
+    const sql = 'DELETE FROM asset_departments WHERE id IN (?)';
+    const values = parsedIds;
 
-router.get('/logout', (req, res) => {
-    req.session.loggedin = false;
-    res.redirect('/');
-})
-
-*/
+    // Execute the query
+    req.con.query(sql, [values], (err, result) => {
+      if (err) {
+        console.error('Error Executing Query: ' + err.message);
+        return res.status(500).json({ error: 'Internal Server Error.' });
+      }
+  
+      // Check if any rows were affected
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'No rows found for deletion.' });
+      }
+       // Return success response
+      res.json({ message: 'Rows deleted successfully.' });
+    });
+  
+    
+  });
 
 module.exports = router
