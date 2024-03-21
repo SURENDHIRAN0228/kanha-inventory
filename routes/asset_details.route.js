@@ -1,33 +1,59 @@
+// Import necessary modules
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 
-
 const assetDetailsController = require("../controllers/asset_details.controller");
-const { upload } = require("../middleware/uploader");
+const { uploads } = require("../middleware/uploads");
 
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => {
 		// set uploads directory
-		cb(null, 'uploads/photo/')
+        if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+            cb(null, 'uploads/photo/')
+        } else if(file.mimetype === 'text/csv') {
+            cb(null, 'storage/uploads/')
+        } else
+        {
+            cb(null, 'storage/pdf_copies/')
+
+        }
 	},
 	filename: (req, file, cb) => {
-		// save file with current timestamp + user email + file extension
-		cb(null, Date.now() + path.extname(file.originalname));
+		// save file with current timestamp + field name of the file + file extension
+		cb(null,  Date.now() + file.fieldname + path.extname(file.originalname));
 	}
 })
 
+const fileFilter = (req, file, cb) => {
+    if(file.fieldname === "assetImage") {
+        (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png')? cb(null,true): cb(null,false);
+    }
+    else if(file.fieldname === "storeInwardCopy" || file.fieldname === "departmentGatepassCopy" || file.fieldname === "warrantyCopy" || file.fieldname === "insuranceCopy"|| file.fieldname === "purchaseAndDisposalApprovalCopy"|| file.fieldname === "purchaseOrderCopy" || file.fieldname === "invoiceCopy") {
+        (file.mimetype === 'application/msword' || file.mimetype === 'application/pdf')? cb(null,true): cb(null,false);
+    } else if(file.fieldname === "file") {
+        (file.mimetype === 'text/csv')? cb(null,true): cb(null,false);
+    }
+}
+
 // initialize the multer configuration
-const uploader = multer({storage: storage});
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter    
+}).fields([{ name: 'assetImages', maxCount: 1 }])
 
+//Route to Importing csv  file
+router.post("/importAsset", uploads("file"), assetDetailsController.import);
 
-router.post("/import", upload("file"), assetDetailsController.import);
+// Route to fetch data from MySQL database
+router.get("/getAsset", function(req, res) {
 
-router.get("/", function(req, res) {
+    //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_details` , function (error, result) {
         if (error) {
+            // Handle error
             console.log("Error Connecting to DB");
         } else {
             res.send({ status: true, data: result });
@@ -35,7 +61,10 @@ router.get("/", function(req, res) {
     })
 })
 
-router.get("/:id", function(req, res) {
+// Route to fetch single data from MySql database
+router.get("/getAsset/:id", function(req, res) {
+
+    //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_details WHERE id='${req.params.id}'`, function (error, result) {
         if (error) {
             console.log("Error Connecting to DB");
@@ -45,24 +74,26 @@ router.get("/:id", function(req, res) {
     });
 });
 
-router.post('/create', uploader.single('asset_images'), function (req, res) {
-    const asset_name = req.body.asset_name
-    const asset_classification = req.body.asset_classification
-    const asset_category = req.body.asset_category
-    const asset_date_of_inclusion = req.body.asset_date_of_inclusion
-    const asset_manufactured_by = req.body.asset_manufactured_by
-    const asset_model = req.body.asset_model
-    const manufactured_asset_serial_no	 = req.body.manufactured_asset_serial_no	
-    const asset_capacity = req.body.asset_capacity
-    const vendor_name = req.body.vendor_name
-    const asset_images = !req.file ? 'placeholder.jpg' : req.file.filename
-
-    req.con.query(`INSERT INTO asset_details SET asset_name = '${asset_name}', asset_classification = '${asset_classification}', asset_category = '${asset_category}', asset_date_of_inclusion = '${asset_date_of_inclusion}', asset_manufactured_by = '${asset_manufactured_by}', asset_model = '${asset_model}', manufactured_asset_serial_no = '${manufactured_asset_serial_no}', asset_capacity = '${asset_capacity}', vendor_name = '${vendor_name}', asset_images = '${asset_images}'`, (error, results) => {
+// Define a route to handle data insertion
+router.post('/createAsset', upload, function (req, res) {
+    const assetName = req.body.assetName
+    const assetClassification = req.body.assetClassification
+    const assetCategory = req.body.assetCategory
+    const assetDateOfInclusion = req.body.assetDateOfInclusion
+    const assetManufacturedBy = req.body.assetManufacturedBy
+    const assetModel = req.body.assetModel
+    const manufacturedAssetSerialNo	 = req.body.manufacturedAssetSerialNo	
+    const assetCapacity = req.body.assetCapacity
+    const vendorName = req.body.vendorName
+    const assetImages = req.files.assetImages[0].filename
+    
+    // Insert data into the database
+    req.con.query(`INSERT INTO asset_details SET assetName = '${assetName}', assetClassification = '${assetClassification}', assetCategory = '${assetCategory}', assetDateOfInclusion = '${assetDateOfInclusion}', assetManufacturedBy = '${assetManufacturedBy}', assetModel = '${assetModel}', manufacturedAssetSerialNo = '${manufacturedAssetSerialNo}', assetCapacity = '${assetCapacity}', vendorName = '${vendorName}', aseetImages = '${assetImages}'`, (error, results) => {
         if(results) {
-            req.con.query(`SELECT MAX(id) AS max_id FROM asset_details ` , function (error, result, fields) { 
-                const MaxId = result[0].max_id
-                var asset_code = "KANASS00"+MaxId
-                req.con.query(`UPDATE asset_details SET asset_code = '${asset_code}' WHERE id = '${MaxId}'`, (error, results) => {
+            req.con.query(`SELECT MAX(id) AS maxId FROM asset_details ` , function (error, result, fields) { 
+                const maxId = result[0].maxId
+                var assetCode = "KANASS00"+maxId
+                req.con.query(`UPDATE asset_details SET assetCode = '${assetCode}' WHERE id = '${maxId}'`, (error, results) => {
                     res.send({"status":true, "message":"Asset Created Successfully"});
                 })
             })        } else {
@@ -71,16 +102,17 @@ router.post('/create', uploader.single('asset_images'), function (req, res) {
     })
 });
 
-router.post('/update/:id', uploader.single('asset_images'), function (req, res) {
-    const asset_name = req.body.asset_name
-    const asset_classification = req.body.asset_classification
-    const asset_category = req.body.asset_category
-    const asset_date_of_inclusion = req.body.asset_date_of_inclusion
-    const asset_manufactured_by = req.body.asset_manufactured_by
-    const asset_model = req.body.asset_model
-    const manufactured_asset_serial_no = req.body.manufactured_asset_serial_no	
-    const asset_capacity = req.body.asset_capacity
-    const vendor_name = req.body.vendor_name
+// Route to handle updating data
+router.post('/updateAsset/:id', function (req, res) {
+    const assetName = req.body.assetName
+    const assetClassification = req.body.assetClassification
+    const assetCategory = req.body.assetCategory
+    const assetDateOfInclusion = req.body.assetDateOfInclusion
+    const assetManufacturedBy = req.body.assetManufacturedBy
+    const assetModel = req.body.assetModel
+    const manufacturedAssetSerialNo = req.body.manufacturedAssetSerialNo	
+    const assetCapacity = req.body.assetCapacity
+    const vendorName = req.body.vendorName
 
     // if user upload new photo, then remove old photo and save photo's name in database
 	//if (req.file) {
@@ -89,10 +121,11 @@ router.post('/update/:id', uploader.single('asset_images'), function (req, res) 
 			//fs.unlink(`uploads/photo/${req.body.old_photo}`);
         //asset_images = req.file.filename
 	//}
-    const asset_images = !req.file ? 'placeholder.jpg' : req.file.filename
+    //const assetImages = !req.file ? 'placeholder.jpg' : req.file.filename
+  
     
-    console.log(req.params.id +','+ asset_images)
-    req.con.query(`UPDATE asset_details SET asset_name = '${asset_name}', asset_classification = '${asset_classification}', asset_category = '${asset_category}', asset_date_of_inclusion = '${asset_date_of_inclusion}', asset_manufactured_by = '${asset_manufactured_by}', asset_model = '${asset_model}', manufactured_asset_serial_no = '${manufactured_asset_serial_no}', asset_capacity = '${asset_capacity}', vendor_name = '${vendor_name}', asset_images = '${asset_images}' WHERE id= '${req.params.id}'`, (error, results) => {
+    // Request to update data
+    req.con.query(`UPDATE asset_details SET assetName = '${assetName}', assetClassification = '${assetClassification}', assetCategory = '${assetCategory}', assetDateOfInclusion = '${assetDateOfInclusion}', assetManufacturedBy = '${assetManufacturedBy}', assetModel = '${assetModel}', manufacturedAssetSerialNo = '${manufacturedAssetSerialNo}', assetCapacity = '${assetCapacity}', vendorName = '${vendorName}' WHERE id= '${req.params.id}'`, (error, results) => {
         if(results) {
             res.send({"status":true, "message":"Updated successfully"});
         } else {
@@ -101,7 +134,8 @@ router.post('/update/:id', uploader.single('asset_images'), function (req, res) 
     })
 });
 
-router.delete('/delete/:id', function (req, res) {
+// Route to delete data from MySQL database
+router.delete('/deleteAsset/:id', function (req, res) {
     req.con.query(`DELETE FROM asset_details WHERE id='${req.params.id}'`, (error, results) => {
         if (results) {
             res.send({ status: true, message: "Deleted Successfully" });
@@ -111,5 +145,37 @@ router.delete('/delete/:id', function (req, res) {
     })
 })
 
+// Route to delete multiple data from MySQL database
+router.delete('/deleteAssetRows', (req, res) => {
+    // Assuming you send an array of IDs to delete in the request body
+    const idsToDelete = req.body.ids;
+     
+    if (!idsToDelete || !Array.isArray(idsToDelete) || idsToDelete.length === 0) {
+      return res.status(400).json({ error: 'Invalid request. Please provide an array of IDs to delete.' });
+    }
+  
+    // Convert array elements to integers (assuming IDs are integers)
+    const parsedIds = idsToDelete.map(id => parseInt(id, 10));
+  
+    // Construct the SQL query
+    const sql = 'DELETE FROM asset_details WHERE id IN (?)';
+    const values = parsedIds;
+      // Execute the query
+    req.con.query(sql, [values], (err, result) => {
+      if (err) {
+        console.error('Error executing query: ' + err.message);
+        return res.status(500).json({ error: 'Internal server error.' });
+      }
+  
+      // Check if any rows were affected
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'No rows found for deletion.' });
+      }
+       // Return success response
+      res.json({ message: 'Rows deleted successfully.' });
+    });
+  
+    
+  });
 
 module.exports = router
