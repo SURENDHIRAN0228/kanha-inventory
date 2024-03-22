@@ -49,7 +49,7 @@ router.post("/import", uploads("file"), assetDetailsManagementController.import)
 
 // Route to fetch data from MySQL database
 router.get("/", function(req, res) {
-	console.log()
+	
     //Read data from Mysql database
     req.con.query(`SELECT * FROM asset_details_managements` , function (error, result) {
         if (error) {
